@@ -2,7 +2,6 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from pr2_utils import bresenham2D
-from icp import icp_transform
 
 def load_lidar(path="../data",dataset=20):
     
@@ -36,7 +35,7 @@ def load_imu(path="../data",dataset=20):
     return imu_angular_velocity, imu_linear_acceleration, imu_stamps
 
 if __name__ == '__main__':
-  dataset = 20
+  dataset = 21
   
   with np.load("../data/Encoders%d.npz"%dataset) as data:
     encoder_counts = data["counts"] # 4 x n encoder counts
@@ -60,4 +59,51 @@ if __name__ == '__main__':
     disp_stamps = data["disparity_time_stamps"] # acquisition times of the disparity images
     rgb_stamps = data["rgb_time_stamps"] # acquisition times of the rgb images
 
-  print(lidar_ranges.shape[0])
+  lidar_theta_all = np.linspace(lidar_angle_min, lidar_angle_max, np.shape(lidar_ranges)[0])
+
+MAP = {}
+MAP['res']   = .05 #meters
+MAP['xmin']  =  -15  #meters
+MAP['ymin']  =  -15
+MAP['xmax']  =  30
+MAP['ymax']  =  30
+MAP['sizex']  = int(np.ceil((MAP['xmax'] - MAP['xmin']) / MAP['res'] + 1)) #cells
+MAP['sizey']  = int(np.ceil((MAP['ymax'] - MAP['ymin']) / MAP['res'] + 1))
+MAP['map'] = np.zeros((MAP['sizex'],MAP['sizey']),dtype=np.int8) #DATA TYPE: char or int8
+
+def cartesian_to_map_index(cartesian_x, cartesian_y, MAP):
+    index_x = int((cartesian_x - MAP['xmin'])/MAP['res'])
+    index_y = int((cartesian_y - MAP['ymin'])/MAP['res'])
+
+    return index_x, index_y
+
+first_lidar_scan = lidar_ranges[:,0]
+all_grid_points = []
+for lidar_r, lidar_theta in zip(first_lidar_scan, lidar_theta_all):
+    if lidar_r < lidar_range_min or lidar_r > lidar_range_max:
+        continue
+    local_sensor_x = lidar_r * np.cos(lidar_theta)
+    local_sensor_y = lidar_r * np.sin(lidar_theta)
+
+    local_body_x = local_sensor_x + .13673
+    local_body_y = local_sensor_y
+    global_x = local_body_x
+    global_y = local_body_y
+
+    lidar_x_index, lidar_y_index = cartesian_to_map_index(global_x, global_y, MAP)
+    global_bot_x, global_bot_y = cartesian_to_map_index(0, 0, MAP)
+
+    free_cells = bresenham2D(global_bot_x, global_bot_y, lidar_x_index, lidar_y_index)
+    free_cells = free_cells.astype(int)
+
+    MAP['map'][np.array(free_cells[0]), np.array(free_cells[1])] = 1
+
+first_map = (MAP["map"]*255).astype(int)
+
+plt.figure()
+plt.imshow(first_map, interpolation='nearest')
+save_path = str(dataset) \
+                    + "_first_lidar_map.png"
+plt.savefig(save_path)
+plt.show()
+plt.pause(10)

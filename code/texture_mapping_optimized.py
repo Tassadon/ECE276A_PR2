@@ -39,7 +39,7 @@ def load_imu(path="../data",dataset=20):
     return imu_angular_velocity, imu_linear_acceleration, imu_stamps
 
 if __name__ == '__main__':
-  dataset = 21
+  dataset = 20
   
   with np.load("../data/Encoders%d.npz"%dataset) as data:
     encoder_counts = data["counts"] # 4 x n encoder counts
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     rgb_stamps = data["rgb_time_stamps"] # acquisition times of the rgb images
 
 #best_trajectory = np.load(f"{dataset}_scan_matching.npy").T
-best_trajectory = np.load(f"./output/odometry_trajectory_{dataset}.npy").T
+best_trajectory = np.load(f"./output/{dataset}_optimized_path.npy").T
 
 def normalize(img):
     max_ = img.max()
@@ -189,6 +189,6 @@ for rgb_index in tqdm(range(len(rgb_stamps))):
 color_map = color_map.astype(int)
 
 plt.imshow(color_map)
-plt.savefig(f"./output/{dataset}_texture_map_base.png")
-plt.title(f"texture map for dataset {dataset}")
+plt.savefig(f"./output/{dataset}_texture_map_optimized.png")
+plt.title(f"optimized texture map for dataset {dataset}")
 plt.show()

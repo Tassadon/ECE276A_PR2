@@ -44,9 +44,9 @@ def drive_and_data():
     return states
 
 def drive():
-    dataset = 21
-    encoder_counts, encoder_timestamps = load_encoders(path="/Users/justin/Documents/Homework/ECE 276A/ECE 276A Project 2/ECE276A_PR2/data/",dataset=dataset)
-    ang_vel, linear_acc, imu_stamps = load_imu(path="/Users/justin/Documents/Homework/ECE 276A/ECE 276A Project 2/ECE276A_PR2/data/",dataset=dataset)
+    dataset = 20
+    encoder_counts, encoder_timestamps = load_encoders(path="../data",dataset=dataset)
+    ang_vel, linear_acc, imu_stamps = load_imu(path="../data",dataset=dataset)
     v_t, yaw_data_acc = preprocess(encoder_counts, ang_vel)
 
     states = get_states(v_t, encoder_timestamps, yaw_data_acc, imu_stamps)
@@ -54,8 +54,9 @@ def drive():
     plt.plot(states[:,0],states[:,1])
     plt.grid()
     plt.show()
-    plt.savefig(f"odometry trajectory{dataset}")
-    np.save(f"odometry_trajectory_{dataset}",states)
+    plt.title(f"odometry trajectory for dataset {dataset}")
+    plt.savefig(f"./output/odometry trajectory{dataset}")
+    np.save(f"./output/odometry_trajectory_{dataset}",states)
     plt.pause(10)
     
 if __name__ == "__main__":

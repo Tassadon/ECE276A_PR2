@@ -3,6 +3,7 @@ from load_data import *
 from drive_model import *
 import tqdm 
 from icp import icp_transform
+from transforms3d.euler import mat2euler
 
 def clean_lidar_data(lidar,index):
 
@@ -64,24 +65,29 @@ def scan_and_match(v_t, encoder_timestamps, imu_data, imu_stamps, lidar,dataset)
         
         cum_trans = Step_Transition @ cum_trans
         Transition_List.append(cum_trans)
-        p = np.vstack([ p, cum_trans[:-1,-1] ])
-
+        p = np.vstack([ p, np.array([cum_trans[0,-1], cum_trans[1,-1], x[-1,2]]) ])
 
     plt.plot(x[:,0],x[:,1])
-    plt.plot(p[:,0],p[:,1]) 
+    plt.plot(p[:,0],p[:,1])
     plt.show()
-    plt.savefig(f"{dataset}_scan_matching")
+    plt.title("scan matching correction trajectory")
+    plt.legend(["odometry trajectory","scan matching trajectory"])
     plt.pause(10)
-    np.save(f"{dataset}_poses",Transition_List)
+    plt.savefig(f"{dataset}_scan_matching")
+    np.save(f"./output/{dataset}_odometry_trajectory_to_lidar",x)
+    np.save(f"./output/{dataset}_scan_matching",p)
+    np.save(f"./output/{dataset}_poses",Transition_List)
+    
+    
     return p, x
 
 if __name__ == "__main__":
-    dataset = 20
-    encoder_counts, encoder_timestamps = load_encoders(path="/Users/justin/Documents/Homework/ECE 276A/ECE 276A Project 2/ECE276A_PR2/data/",dataset=dataset)
-    ang_vel, linear_acc, imu_stamps = load_imu(path="/Users/justin/Documents/Homework/ECE 276A/ECE 276A Project 2/ECE276A_PR2/data/",dataset=dataset)
+    dataset = 21
+    encoder_counts, encoder_timestamps = load_encoders(path="../data/",dataset=dataset)
+    ang_vel, linear_acc, imu_stamps = load_imu(path="../data/",dataset=dataset)
     v_t, yaw_data_acc = preprocess(encoder_counts, ang_vel)
 
     lidar = load_lidar(dataset=dataset)
     print(list(lidar.keys()))
-
+    #print(clean_lidar_data(lidar,0)[:,0])
     p,x = scan_and_match(v_t,encoder_timestamps,yaw_data_acc,imu_stamps, lidar,dataset)

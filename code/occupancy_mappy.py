@@ -39,7 +39,7 @@ def cartesian_to_map_index(cartesian_x, cartesian_y):
     return index_x, index_y
 
 if __name__ == '__main__':
-    dataset = 21
+    dataset = 20
     p = np.load(f"./output/{dataset}_odometry_trajectory_to_lidar.npy")
     x = np.load(f"./output/{dataset}_scan_matching.npy")
     lidar_map = np.zeros((int(np.ceil((30 - -30) / .05 + 1)),

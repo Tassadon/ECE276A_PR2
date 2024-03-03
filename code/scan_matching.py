@@ -82,7 +82,7 @@ def scan_and_match(v_t, encoder_timestamps, imu_data, imu_stamps, lidar,dataset)
     return p, x
 
 if __name__ == "__main__":
-    dataset = 21
+    dataset = 20
     encoder_counts, encoder_timestamps = load_encoders(path="../data/",dataset=dataset)
     ang_vel, linear_acc, imu_stamps = load_imu(path="../data/",dataset=dataset)
     v_t, yaw_data_acc = preprocess(encoder_counts, ang_vel)

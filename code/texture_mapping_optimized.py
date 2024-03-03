@@ -64,23 +64,7 @@ if __name__ == '__main__':
     rgb_stamps = data["rgb_time_stamps"] # acquisition times of the rgb images
 
 #best_trajectory = np.load(f"{dataset}_scan_matching.npy").T
-best_trajectory = np.load(f"./output/{dataset}_optimized_path.npy").T
-
-def normalize(img):
-    max_ = img.max()
-    min_ = img.min()
-    return (img - min_)/(max_- min_)
-
-disp_closest_index = []
-for rgb_stamp in rgb_stamps:
-    disp_closest_index.append(np.argmin(abs(disp_stamps - rgb_stamp)))
-
-trajectory_closest_index = []
-for rgb_stamp in rgb_stamps:
-    trajectory_closest_index.append(np.argmin(abs(encoder_stamps - rgb_stamp)))
-
-best_trajectory_closest = best_trajectory[:, trajectory_closest_index]
-
+x = np.load(f"./output/{dataset}_optimized_path.npy").T
 
 external_camera_roll = 0.0 
 external_camera_pitch = 0.36
@@ -101,49 +85,47 @@ R_o_r = np.array([[0, -1, 0, 0],
 
 R_o_r = np.linalg.inv(R_o_r)
 
-MAP = {}
-MAP['res']   = .05 #meters
-MAP['xmin']  =  -15  #meters
-MAP['ymin']  =  -15
-MAP['xmax']  =  30
-MAP['ymax']  =  30
+color_map = np.zeros((int(np.ceil((30 - -15) / .05 + 1)),
+                      int(np.ceil((30 - -15) / .05 + 1)), 
+                      3))
 
-MAP['sizex']  = int(np.ceil((MAP['xmax'] - MAP['xmin']) / MAP['res'] + 1)) #cells
-MAP['sizey']  = int(np.ceil((MAP['ymax'] - MAP['ymin']) / MAP['res'] + 1))
-MAP['map'] = np.zeros((MAP['sizex'],MAP['sizey'])) #DATA TYPE: char or int8
-
-color_map = np.zeros((MAP['sizex'],MAP['sizey'], 3))
-
-def cartesian_to_map_index(cartesian_x, cartesian_y, MAP):
-    index_x = ((cartesian_x - MAP['xmin'])/MAP['res']).astype(int)
-    index_y = ((cartesian_y - MAP['ymin'])/MAP['res']).astype(int)
+def cartesian_to_map_index(cartesian_x, cartesian_y, *args):
+    index_x = np.round((cartesian_x - -15)/.05).astype(int) #was -30 was -45
+    index_y = np.round((cartesian_y - -15)/.05).astype(int)
 
     return index_x, index_y
 
+disp_closest_index = []
+for rgb_stamp in rgb_stamps:
+    disp_closest_index.append(np.argmin(abs(disp_stamps - rgb_stamp)))
+
+trajectory_closest_index = []
+for rgb_stamp in rgb_stamps:
+    trajectory_closest_index.append(np.argmin(abs(encoder_stamps - rgb_stamp)))
+
+x_closest = x[:, trajectory_closest_index]
+
 for rgb_index in tqdm(range(len(rgb_stamps))):
     disparity_index = disp_closest_index[rgb_index]
-    imd = cv2.imread("../../dataRGBD/Disparity" + str(dataset) + "/disparity" + str(dataset) + "_" + str(disparity_index + 1) + ".png",cv2.IMREAD_UNCHANGED) # (480 x 640)
-    imc = cv2.imread("../../dataRGBD/RGB" + str(dataset) + f"/rgb{dataset}_" + str(rgb_index + 1) + ".png")[...,::-1] # (480 x 640 x 3)
+    imd = cv2.imread(f"../../dataRGBD/Disparity{dataset}/disparity{dataset}_{disparity_index + 1}.png",cv2.IMREAD_UNCHANGED) # (480 x 640)
+    imc = cv2.imread(f"../../dataRGBD/RGB{dataset}/rgb{dataset}_{rgb_index + 1}.png")[...,::-1] # (480 x 640 x 3)
 
-    # convert from disparity from uint16 to double
     disparity = imd.astype(np.float32)
 
-    # get depth
     dd = (-0.00304 * disparity + 3.31)
     z = 1.03 / dd
 
-    # calculate u and v coordinates
     v,u = np.mgrid[0:disparity.shape[0],0:disparity.shape[1]]
 
-    fx = 585.05108211
-    fy = 585.05108211
-    cx = 315.83800193
-    cy = 242.94140713
+    fx = 585.05108
+    fy = 585.05108
+    cx = 315.83800
+    cy = 242.94140
     x = (u-cx) / fx * z
     y = (v-cy) / fy * z
 
-    rgbu = np.round((u * 526.37 + dd*(-4.5*1750.46) + 19276.0)/fx)
-    rgbv = np.round((v * 526.37 + 16662.0)/fy)
+    rgbu = np.round((u * 526.37 + dd*(-4.5*1750.46) + 19276.0) / fx)
+    rgbv = np.round((v * 526.37 + 16662.0) / fy)
     valid = (rgbu>= 0)&(rgbu < disparity.shape[1])&(rgbv>=0)&(rgbv<disparity.shape[0])
 
     rgbu_valid = rgbu[valid].astype(int)
@@ -154,10 +136,10 @@ for rgb_index in tqdm(range(len(rgb_stamps))):
 
     points_robot_frame = external_camera_matrix@points_regular_frame
 
-    x_current = best_trajectory_closest[0, rgb_index]
-    y_current = best_trajectory_closest[1, rgb_index]
-    theta_current = best_trajectory_closest[2, rgb_index]
-    z_current = 0.14700999999999997 
+    x_current = x_closest[0, rgb_index]
+    y_current = x_closest[1, rgb_index]
+    theta_current = x_closest[2, rgb_index]
+    z_current = 0.147009
     global_translation_current = [x_current, y_current, z_current]
 
     global_transformation = np.eye(4)
@@ -166,20 +148,20 @@ for rgb_index in tqdm(range(len(rgb_stamps))):
 
     points_global_frame = global_transformation@points_robot_frame
 
-    global_x_ind = (points_global_frame[0,:] > -30) & (points_global_frame[0,:] < 30)
-    global_y_ind = (points_global_frame[1,:] > -30) & (points_global_frame[1,:] < 30)
-    global_xy_clip_ind = global_x_ind & global_y_ind
+    global_x_indices = (points_global_frame[0,:] > -30) & (points_global_frame[0,:] < 30)
+    global_y_indices = (points_global_frame[1,:] > -30) & (points_global_frame[1,:] < 30)
+    global_xy_clip_ind = global_x_indices & global_y_indices
     
     floor_indices = (points_global_frame[2,:] > -30) & (points_global_frame[2,:] < 30)
 
-    final_indices = global_xy_clip_ind & floor_indices
+    final_indices = global_xy_clip_ind & floor_indices #set logic
 
     floor_global_frame = points_global_frame[:, final_indices]
 
     floor_global_frame_x = floor_global_frame[0,:]
     floor_global_frame_y = floor_global_frame[1,:]
 
-    floor_x_pixelated, floor_y_pixelated = cartesian_to_map_index(floor_global_frame_x, floor_global_frame_y, MAP)
+    floor_x_pixelated, floor_y_pixelated = cartesian_to_map_index(floor_global_frame_x, floor_global_frame_y)
 
     rgbu_final = rgbu_valid[final_indices]
     rgbv_final = rgbv_valid[final_indices]

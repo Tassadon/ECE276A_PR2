@@ -23,11 +23,11 @@ if __name__ == "__main__":
     prior_model = gtsam.noiseModel.Diagonal.Sigmas((.1, .1, .1))
     initial_estimate = gtsam.Values()
 
-    odometry_model = gtsam.noiseModel.Diagonal.Sigmas((0.3, 0.3, 0.2))
+    odometry_model = gtsam.noiseModel.Diagonal.Sigmas((0.3, 0.3, 0.1))
     Between = gtsam.BetweenFactorPose2
     
     graph.add(gtsam.PriorFactorPose2(0, gtsam.Pose2(odom_sm[0,0], odom_sm[0,1], odom_sm[0,2]), prior_model))
-    n = 30
+    n = 15
     count = 0
     for t in tqdm(range(odom_sm.shape[0])):
         initial_estimate.insert(t,gtsam.Pose2(odom_sm[t,0], odom_sm[t,1], odom_sm[t,2]))

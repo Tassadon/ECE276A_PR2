@@ -50,7 +50,7 @@ if __name__ == '__main__':
     #plt.plot(x[:,0],x[:,1])
     lidar = load_lidar(dataset=dataset)
 
-    #lidar_map_ownership = {}
+    lidar_map_ownership = {}
 
     for t in tqdm(range(np.shape(lidar["time_stamps"])[0])):
       
@@ -63,23 +63,23 @@ if __name__ == '__main__':
       lidar_y = rot_coords[:,1] + x[t,1]
       lidar_x_index, lidar_y_index = cartesian_to_map_index(lidar_x, lidar_y)
       global_bot_x, global_bot_y = cartesian_to_map_index(x[t,0], x[t,1])
-      #a = set()
+      a = set()
       for row in range(lidar_x_index.shape[0]):
           try:
             free_cells = bresenham2D(global_bot_x, global_bot_y, lidar_x_index[row], lidar_y_index[row])
             free_cells = free_cells.astype(int)
             lidar_map[np.array(free_cells[0]), np.array(free_cells[1])] = 1
 
-            #a = a.union(set(map(lambda co: tuple(co),free_cells.T.tolist())))
+            a = a.union(set(map(lambda co: tuple(co),free_cells.T.tolist())))
             
           except IndexError:
             continue
-      #lidar_map_ownership[t] = a
+      lidar_map_ownership[t] = a
 
     
       
-    #with open(f'{dataset}_lidar_map_ownership.pkl','wb') as f:
-    #   pickle.dump(lidar_map_ownership,f)
+    with open(f'./output/{dataset}_lidar_map_ownership.pkl','wb') as f:
+       pickle.dump(lidar_map_ownership,f)
 
     first_map = (lidar_map*255).astype(int)
 
